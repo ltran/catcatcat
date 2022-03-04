@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
@@ -14,17 +15,40 @@ import (
 
 var (
 	Token string
-	Store []string
+	Store = &MemStore{}
 )
 
 func init() {
 	flag.StringVar(&Token, "t", "", "Bot Token")
 	flag.Parse()
 
-	Store = []string{
-		"https://i.ytimg.com/vi/ByH9LuSILxU/maxresdefault.jpg",
-		"https://m.media-amazon.com/images/I/71bcwxa4FmL._AC_SX425_.jpg",
-	}
+	Store.LoadDefaults([]Picture{
+		{URL: "https://i.ytimg.com/vi/ByH9LuSILxU/maxresdefault.jpg"},
+		{URL: "https://m.media-amazon.com/images/I/71bcwxa4FmL._AC_SX425_.jpg"},
+	})
+}
+
+type DataStore interface {
+	GetRandomCat() Picture
+}
+
+type Picture struct {
+	URL string
+}
+
+type MemStore struct {
+	Defaults []Picture
+	Len      int
+}
+
+func (s *MemStore) LoadDefaults(pics []Picture) {
+	s.Defaults = pics
+	s.Len = len(pics)
+}
+
+func (s *MemStore) GetRandomCat() Picture {
+	i := rand.Intn(s.Len)
+	return s.Defaults[i]
 }
 
 func main() {
@@ -61,16 +85,11 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	// If the message is "ping" reply with "Pong!"
 	if m.Content == "!cat" {
-		s.ChannelMessageSend(m.ChannelID, Store[rand.Intn((len(Store)))])
+		s.ChannelMessageSend(m.ChannelID, Store.GetRandomCat().URL)
 	}
 
-	// If the message is "pong" reply with "Ping!"
-	if m.Content == "!dog" {
-		s.ChannelMessageSend(m.ChannelID, "Ping!")
-	}
-
-	if m.Content == "!reload" {
+	if strings.Contains(m.Content, "sad") {
+		s.ChannelMessageSend(m.ChannelID, Store.GetRandomCat().URL)
 	}
 }
